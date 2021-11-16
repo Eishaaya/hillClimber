@@ -17,7 +17,7 @@ namespace HELP_ME
         Random random = new Random();
         char[] answer = "Karan".ToCharArray();
         char[] letters = "jfnhe".ToCharArray();
-        bool done = true;     
+        bool done = true;
 
         Sprite goal;
         Sprite climber;
@@ -25,22 +25,22 @@ namespace HELP_ME
         Texture2D climbingTexture;
         Texture2D goalTexture;
 
-        uint[] tempList;
+        Vector4[] tempList;
         Color[] climbingColors;
         Color[] goalColors;
 
-        public void Mutate (Color[] colors)
+        public void Mutate(ref Color[] colors)
         {
             var tempArray = getInts(colors);
-            Mutate(tempArray);
+            SubirUneMutation(ref tempArray);
             colors = GetColors(tempArray);
         }
-        public bool Error (Color[] newA, uint[] oldA, Color[] goal, ref bool gud)
+        public bool Error(Color[] newA, Vector4[] oldA, Color[] goal, ref bool gud)
         {
-            var tempA = getInts(newA);
-            var tempG = getInts(goal);
+            var tempA = GetVector4s(newA);
+            var tempG = GetVector4s(goal);
 
-            return Error(tempA, oldA, tempG, ref gud);
+            return TestError(tempA, oldA, tempG, ref gud);
         }
 
         public uint[] getInts(Color[] colors)
@@ -53,20 +53,66 @@ namespace HELP_ME
             return tempArray;
         }
 
+        public Vector4[] GetVector4s(Color[] colors)
+        {
+            var tempArray = new Vector4[colors.Length];
+            for (int i = 0; i < colors.Length; i++)
+            {
+                tempArray[i] = colors[i].ToVector4();
+            }
+            return tempArray;
+        }
+
+        public Color[] ReturnColors(Vector4[] tempArray)
+        {
+            var colors = new Color[tempArray.Length];
+            for (int i = 0; i < tempArray.Length; i++)
+            {
+                colors[i] = new Color(tempArray[i]);
+            }
+            return colors;
+        }
+
         public Color[] GetColors(uint[] tempArray)
         {
             var colors = new Color[tempArray.Length];
             for (int i = 0; i < tempArray.Length; i++)
             {
-                colors[i] = new Color((uint)tempArray[i]);
+                colors[i] = new Color(tempArray[i]);
             }
             return colors;
         }
 
-        public void Mutate(uint[] letters)
+        public void SubirUneMutation(ref uint[] lettres)
         {
-            var i = random.Next(0, letters.Length);
-            letters[i] += (uint)(random.Next(0, 2) == 0 ? 1 : -1);
+            //this is in french
+            var indice = random.Next(0, lettres.Length);
+            var couleurActuelles = lettres[indice];
+            lettres[indice] = 0;
+
+            var aléatoire = random.Next(0, 4);
+
+            byte[] octetsDeCouleur = new byte[4];
+
+            for (int i = 0; i < 4; i++)
+            {
+                octetsDeCouleur[i] = (byte)(couleurActuelles >> i * 8);
+            }
+
+            var octetActuel = octetsDeCouleur[aléatoire];
+            var monnaie = random.Next(0, 2) == 1 ? 1 : -1;
+            octetActuel = (byte)(octetActuel + monnaie);
+
+            if (Math.Abs(octetsDeCouleur[aléatoire] - octetActuel) != 1)
+            {
+                octetActuel = (byte)(octetActuel - monnaie);
+            }
+
+            octetsDeCouleur[aléatoire] = octetActuel;
+            for (int i = 0; i < 4; i++)
+            {
+                lettres[indice] += (uint)octetsDeCouleur[i] << i * 8;
+            }
         }
 
         public static string BeYarn(char[] thread)
@@ -94,14 +140,25 @@ namespace HELP_ME
             uint oldDist = 0;
             for (int i = 0; i < newList.Length; i++)
             {
-                newDist += (uint)MathHelper.Distance(newList[i], goal[i]);
-                oldDist += (uint)MathHelper.Distance(oldList[i], goal[i]);
+                newDist += (uint)Math.Abs(newList[i] - goal[i]);
+                oldDist += (uint)Math.Abs(oldList[i] - goal[i]);
             }
             better = newDist < oldDist;
             return newDist == 0;
         }
 
-
+        public bool TestError(Vector4[] newList, Vector4[] oldList, Vector4[] goal, ref bool better)
+        {
+            float newDist = 0;
+            float oldDist = 0;
+            for (int i = 0; i < newList.Length; i++)
+            {
+                newDist += Vector4.Distance(newList[i], goal[i]);
+                oldDist += Vector4.Distance(oldList[i], goal[i]);
+            }
+            better = newDist < oldDist;
+            return newDist == 0;
+        }
 
         public Game1()
         {
@@ -109,12 +166,6 @@ namespace HELP_ME
             Content.RootDirectory = "Content";
         }
 
-        /// <summary>
-        /// Allows the game to perform any initialization it needs to before starting to run.
-        /// This is where it can query for any required services and load any non-graphic
-        /// related content.  Calling base.Initialize will enumerate through any components
-        /// and initialize them as well.
-        /// </summary>
         protected override void Initialize()
         {
             graphics.PreferredBackBufferWidth = 1000;
@@ -123,14 +174,10 @@ namespace HELP_ME
             base.Initialize();
         }
 
-        /// <summary>
-        /// LoadContent will be called once per game and is the place to load
-        /// all of your content.
-        /// </summary>
         protected override void LoadContent()
         {
             spriteBatch = new SpriteBatch(GraphicsDevice);
-                        
+
             int width = 2;
             int height = 2;
             climbingTexture = new Texture2D(GraphicsDevice, width, height);
@@ -139,14 +186,14 @@ namespace HELP_ME
             var pixelColor = new Color[width * height];
             for (int i = 0; i < pixelColor.Length; i++)
             {
-                pixelColor[i] = Color.White;                
+                pixelColor[i] = Color.LimeGreen;
             }
             climbingTexture.SetData(pixelColor);
 
             var fuckOff = new Color[width * height];
             for (int i = 0; i < fuckOff.Length; i++)
             {
-                fuckOff[i] = Color.Blue;
+                fuckOff[i] = Color.Red;
             }
 
             goalTexture.SetData(fuckOff);
@@ -159,25 +206,13 @@ namespace HELP_ME
             climbingColors = pixelColor;
             goalColors = new Color[pixelColor.Length];
             goalTexture.GetData(goalColors);
-            tempList = getInts(climbingColors);
+            tempList = GetVector4s(climbingColors);
         }
 
-        /// <summary>
-        /// UnloadContent will be called once per game and is the place to unload
-        /// game-specific content.
-        /// </summary>
-        protected override void UnloadContent()
-        {
-            // TODO: Unload any non ContentManager content here
-        }
-
-        /// <summary>
-        /// Allows the game to run logic such as updating the world,
-        /// checking for collisions, gathering input, and playing audio.
-        /// </summary>
-        /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Update(GameTime gameTime)
         {
+            #region oldCOde
+
             //if (!done)
             //{
             //    var tempList = (char[])letters.Clone();
@@ -209,6 +244,8 @@ namespace HELP_ME
             //    done = false;
             //}
 
+            #endregion
+
             bool gud = false;
 
             if (Error(climbingColors, tempList, goalColors, ref gud))
@@ -217,11 +254,11 @@ namespace HELP_ME
             }
             if (!gud)
             {
-                climbingColors = GetColors(tempList);
+                climbingColors = ReturnColors(tempList);
             }
 
-            tempList = getInts(climbingColors);
-            Mutate(climbingColors);
+            tempList = GetVector4s(climbingColors);
+            Mutate(ref climbingColors);
 
             climber.Image.SetData(climbingColors);
             goal.Image.SetData(goalColors);
@@ -229,10 +266,6 @@ namespace HELP_ME
             base.Update(gameTime);
         }
 
-        /// <summary>
-        /// This is called when the game should draw itself.
-        /// </summary>
-        /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Draw(GameTime gameTime)
         {
             GraphicsDevice.Clear(Color.CornflowerBlue);
