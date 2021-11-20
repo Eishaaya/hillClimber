@@ -28,6 +28,7 @@ namespace HELP_ME
         Vector4[] tempList;
         Color[] climbingColors;
         Color[] goalColors;
+        int frameIterations = 100;
 
         public void Mutate(ref Color[] colors)
         {
@@ -149,8 +150,8 @@ namespace HELP_ME
 
         public bool TestError(Vector4[] newList, Vector4[] oldList, Vector4[] goal, ref bool better)
         {
-            float newDist = 0;
-            float oldDist = 0;
+            float newDist = 100;
+            float oldDist = 100;
             for (int i = 0; i < newList.Length; i++)
             {
                 newDist += Vector4.Distance(newList[i], goal[i]);
@@ -177,29 +178,31 @@ namespace HELP_ME
         protected override void LoadContent()
         {
             spriteBatch = new SpriteBatch(GraphicsDevice);
-
+            goalTexture = Content.Load<Texture2D>("Better_Tile");
             int width = 2;
             int height = 2;
+            width = goalTexture.Width;
+            height = goalTexture.Height;
             climbingTexture = new Texture2D(GraphicsDevice, width, height);
-            goalTexture = new Texture2D(GraphicsDevice, width, height);
+           // goalTexture = new Texture2D(GraphicsDevice, width, height);
 
             var pixelColor = new Color[width * height];
             for (int i = 0; i < pixelColor.Length; i++)
             {
-                pixelColor[i] = Color.LimeGreen;
+                pixelColor[i] = Color.Transparent;
             }
             climbingTexture.SetData(pixelColor);
 
-            var fuckOff = new Color[width * height];
-            for (int i = 0; i < fuckOff.Length; i++)
-            {
-                fuckOff[i] = Color.Red;
-            }
+            //var fuckOff = new Color[width * height];
+            //for (int i = 0; i < fuckOff.Length; i++)
+            //{
+            //    fuckOff[i] = Color.Black;
+            //}
 
-            goalTexture.SetData(fuckOff);
+            //goalTexture.SetData(fuckOff);
 
             climber = new Sprite(climbingTexture, new Vector2(0, 0));
-            climber.Scale = 500 / width;
+            climber.Scale = 500 / (float)width;
             goal = new Sprite(goalTexture, new Vector2(width * climber.Scale, 0));
             goal.Scale = climber.Scale;
 
@@ -207,6 +210,11 @@ namespace HELP_ME
             goalColors = new Color[pixelColor.Length];
             goalTexture.GetData(goalColors);
             tempList = GetVector4s(climbingColors);
+
+            if (goalColors.Length < 100)
+            {
+                frameIterations = goalColors.Length;
+            }
         }
 
         protected override void Update(GameTime gameTime)
@@ -247,22 +255,24 @@ namespace HELP_ME
             #endregion
 
             bool gud = false;
-
-            if (Error(climbingColors, tempList, goalColors, ref gud))
+            for (int i = 0; i < frameIterations; i++)
             {
-                done = true;
+                if (Error(climbingColors, tempList, goalColors, ref gud))
+                {
+                    done = true;
+                }
+                if (!gud)
+                {
+                    climbingColors = ReturnColors(tempList);
+                }
+
+                tempList = GetVector4s(climbingColors);
+                Mutate(ref climbingColors);
+
+                climber.Image.SetData(climbingColors);
+                goal.Image.SetData(goalColors);
+
             }
-            if (!gud)
-            {
-                climbingColors = ReturnColors(tempList);
-            }
-
-            tempList = GetVector4s(climbingColors);
-            Mutate(ref climbingColors);
-
-            climber.Image.SetData(climbingColors);
-            goal.Image.SetData(goalColors);
-
             base.Update(gameTime);
         }
 
